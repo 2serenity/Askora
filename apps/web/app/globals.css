@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 120 8% 4%;
+  --foreground: 120 18% 92%;
+  --card: 120 7% 6%;
+  --card-foreground: 120 18% 92%;
+  --primary: 122 100% 58%;
+  --primary-foreground: 0 0% 6%;
+  --secondary: 120 5% 10%;
+  --secondary-foreground: 120 12% 86%;
+  --muted: 120 5% 9%;
+  --muted-foreground: 120 8% 62%;
+  --accent: 122 38% 14%;
+  --accent-foreground: 122 100% 80%;
+  --danger: 0 80% 58%;
+  --danger-foreground: 0 0% 96%;
+  --border: 120 10% 16%;
+  --input: 120 10% 16%;
+  --ring: 122 100% 58%;
+  --radius: 1rem;
+}
+
+* {
+  @apply border-border;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply min-h-screen bg-background text-foreground antialiased;
+  background-image:
+    radial-gradient(circle at top left, rgba(120, 255, 76, 0.08), transparent 32%),
+    radial-gradient(circle at top right, rgba(120, 255, 76, 0.06), transparent 24%),
+    linear-gradient(180deg, #050605 0%, #090b09 52%, #050605 100%);
+}
+
+a {
+  @apply text-inherit no-underline;
+}
+
+::selection {
+  background: rgba(122, 255, 76, 0.28);
+  color: #f5fff0;
+}
+
+.page-shell {
+  position: relative;
+}
+
+.page-shell--neutral {
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, #050605 0%, #080909 52%, #050605 100%);
+}
+
+.page-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(120, 255, 76, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 255, 76, 0.045) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 92%);
+  pointer-events: none;
+}
+
+.page-shell::after {
+  content: "";
+  position: fixed;
+  right: 12%;
+  top: 8%;
+  width: 22rem;
+  height: 22rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(122, 255, 76, 0.12), transparent 68%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.page-shell--neutral::before {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+}
+
+.page-shell--neutral::after {
+  display: none;
+}
+
+@keyframes soft-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-soft-in {
+  animation: soft-in 260ms ease-out;
+}
+
+@keyframes sql-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sql-reveal {
+  animation: sql-reveal 180ms ease-out;
+}

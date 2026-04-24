@@ -1,0 +1,57 @@
+templates:
+  - name: Выполненные заказы и отмены по дням
+    description: Ежедневная сводка по успешным заказам и отменам
+    example_question: Покажи выполненные заказы и отмены по дням за прошлую неделю
+    pattern: "<метрики> по дням за <период>"
+    guidance: "Используй метрики completed_orders и cancelled_orders с измерением order_date."
+    output_shape:
+      chart: line
+      requires_time: true
+  - name: Сравнение доли успешных тендеров
+    description: Сравнение успешности тендеров между текущим и предыдущим периодом
+    example_question: Сравни долю успешных тендеров за текущую неделю и прошлую
+    pattern: "Сравни <метрику> за <период> и прошлый период"
+    guidance: "Используй metric tender_acceptance_rate и comparison previous_period без дополнительной разбивки, если она не указана явно."
+    output_shape:
+      chart: bar
+      requires_time: true
+  - name: Средняя стоимость заказа по часам
+    description: Анализ стоимости заказа в течение дня
+    example_question: Покажи среднюю цену заказа по часам за вчера
+    pattern: "<метрика> по часам за <период>"
+    guidance: "Используй metric avg_order_price и dimension order_hour."
+    output_shape:
+      chart: bar
+      requires_time: true
+  - name: Выручка по дням
+    description: Динамика суммы выполненных заказов по дням
+    example_question: Покажи выручку по дням за текущую неделю
+    pattern: "<метрика> по дням за <период>"
+    guidance: "Используй metric total_revenue и dimension order_date."
+    output_shape:
+      chart: line
+      requires_time: true
+  - name: Отмены клиентом и водителем
+    description: Сравнение клиентских и водительских отмен по дням
+    example_question: Покажи отмены клиентом и водителем по дням за текущий месяц
+    pattern: "<метрики отмен> по дням за <период>"
+    guidance: "Используй metrics client_cancellations и driver_cancellations с измерением order_date."
+    output_shape:
+      chart: line
+      requires_time: true
+  - name: Статусы тендеров по дням
+    description: Анализ статусов тендеров за выбранный период
+    example_question: Покажи статусы тендеров по дням за вчера
+    pattern: "<метрика> по статусам тендера за <период>"
+    guidance: "Используй metric total_tenders и измерение tender_status или order_date в зависимости от запроса."
+    output_shape:
+      chart: bar
+      requires_time: true
+  - name: Количество заказов за выбранный период
+    description: Сводка без группировки, если пользователь хочет итоговое число
+    example_question: Количество заказов с 19 февраля по 20 марта
+    pattern: "<метрика> за <период>"
+    guidance: "Если пользователь не просит разрез, не добавляй измерение автоматически."
+    output_shape:
+      chart: kpi
+      requires_time: true

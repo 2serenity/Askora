@@ -1,0 +1,426 @@
+version: 2
+base_dataset: order_tender_facts
+
+datasets:
+  order_tender_facts:
+    table: analytics.order_tender_facts
+    alias: ot
+    default_time_field: ot.order_timestamp
+    source_key: default
+    joins: []
+
+metrics:
+  total_orders:
+    key: total_orders
+    label: Заказы
+    description: Количество уникальных заказов
+    sql: "COUNT(DISTINCT ot.order_id)"
+    synonyms: ["заказы", "количество заказов", "число заказов", "ордера", "заявки", "сколько заказов", "сколько было заказов"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  completed_orders:
+    key: completed_orders
+    label: Завершенные поездки
+    description: Количество уникальных заказов, где поездка завершена (driverdone_timestamp IS NOT NULL)
+    sql: "COUNT(DISTINCT CASE WHEN ot.driverdone_timestamp IS NOT NULL THEN ot.order_id END)"
+    synonyms: ["завершенные поездки", "завершённые поездки", "выполненные поездки", "поездки завершены", "довезли", "завершено"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  cancelled_orders:
+    key: cancelled_orders
+    label: Отмены
+    description: Количество уникальных заказов со статусом cancelled
+    sql: "COUNT(DISTINCT CASE WHEN ot.status_order = 'cancelled' THEN ot.order_id END)"
+    synonyms: ["отмены", "отмененные заказы", "отменённые заказы", "отказы", "отмененные", "отменённые", "отменилось", "сколько отмен", "сорвалось", "срывы"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  total_tenders:
+    key: total_tenders
+    label: Тендеры
+    description: Количество уникальных тендеров
+    sql: "COUNT(DISTINCT ot.tender_id)"
+    synonyms: ["тендеры", "попытки матчинга", "офферы водителям", "предложения водителям", "сколько тендеров"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  successful_tenders:
+    key: successful_tenders
+    label: Успешные тендеры
+    description: Количество тендеров со статусом done
+    sql: "COUNT(DISTINCT CASE WHEN ot.status_tender = 'done' THEN ot.tender_id END)"
+    synonyms: ["успешные тендеры", "принятые тендеры", "принятых тендеров", "тендеры done", "принятые офферы", "сколько приняли тендеров"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  declined_tenders:
+    key: declined_tenders
+    label: Отклоненные тендеры
+    description: Количество тендеров со статусом decline
+    sql: "COUNT(DISTINCT CASE WHEN ot.status_tender = 'decline' THEN ot.tender_id END)"
+    synonyms: ["отклоненные тендеры", "отклонённые тендеры", "отклоненных тендеров", "отклонённых тендеров", "тендеры decline", "отказы водителей"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  tender_acceptance_rate:
+    key: tender_acceptance_rate
+    label: Доля успешных тендеров
+    description: Доля тендеров со статусом done от всех тендеров, %
+    sql: "ROUND(100.0 * COUNT(DISTINCT CASE WHEN ot.status_tender = 'done' THEN ot.tender_id END) / NULLIF(COUNT(DISTINCT ot.tender_id), 0), 2)"
+    synonyms: ["доля успешных тендеров", "долю успешных тендеров", "конверсия тендера", "доля принятых тендеров", "долю принятых тендеров", "acceptance rate", "успешность тендеров", "процент принятых тендеров"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  order_completion_rate:
+    key: order_completion_rate
+    label: Конверсия в выполненный заказ
+    description: Доля заказов со статусом done от всех заказов, %
+    sql: "ROUND(100.0 * COUNT(DISTINCT CASE WHEN ot.status_order = 'done' THEN ot.order_id END) / NULLIF(COUNT(DISTINCT ot.order_id), 0), 2)"
+    synonyms: ["конверсия", "конверсия в заказ", "конверсия в выполненный заказ", "доля выполненных заказов", "процент выполненных заказов", "доля закрытых заказов"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  client_cancellations:
+    key: client_cancellations
+    label: Отмены клиентом
+    description: Уникальные заказы, отмененные клиентом
+    sql: "COUNT(DISTINCT CASE WHEN ot.clientcancel_timestamp IS NOT NULL THEN ot.order_id END)"
+    synonyms: ["отмены клиентом", "клиентские отмены", "отмены со стороны клиента", "клиенты отменили", "клиент отменил"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  driver_cancellations:
+    key: driver_cancellations
+    label: Отмены водителем
+    description: Уникальные заказы или тендеры, отмененные водителем
+    sql: "COUNT(DISTINCT CASE WHEN ot.drivercancel_timestamp IS NOT NULL THEN COALESCE(ot.tender_id, ot.order_id) END)"
+    synonyms: ["отмены водителем", "водительские отмены", "отмены со стороны водителя", "водители отменили", "водитель отменил"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  avg_order_price:
+    key: avg_order_price
+    label: Средняя цена заказа
+    description: Средняя цена выполненного заказа
+    sql: "ROUND(AVG(ot.price_order_local) FILTER (WHERE ot.status_order = 'done')::numeric, 2)"
+    synonyms: ["средняя цена", "средний чек", "средняя стоимость заказа", "средняя цена заказа", "среднюю цену", "среднюю цену заказа", "среднюю стоимость заказа", "средний ценник", "средняя сумма заказа"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  total_revenue:
+    key: total_revenue
+    label: Выручка
+    description: Сумма стоимости заказов по полю price_order_local
+    sql: "COALESCE(ROUND(SUM(ot.price_order_local)::numeric, 2), 0)"
+    synonyms: ["выручка", "выручку", "оборот", "продажи", "доход", "сумма заказов", "сумма выполненных заказов", "деньги", "денег", "по деньгам", "касса", "сумма выручки"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  avg_distance_km:
+    key: avg_distance_km
+    label: Средняя дистанция
+    description: Средняя дистанция выполненного заказа в километрах
+    sql: "ROUND(AVG(ot.distance_in_meters / 1000.0) FILTER (WHERE ot.status_order = 'done')::numeric, 2)"
+    synonyms: ["средняя дистанция", "дистанция", "расстояние", "километры"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  avg_duration_min:
+    key: avg_duration_min
+    label: Средняя длительность
+    description: Средняя длительность выполненного заказа в минутах
+    sql: "ROUND(AVG(ot.duration_in_seconds / 60.0) FILTER (WHERE ot.status_order = 'done')::numeric, 2)"
+    synonyms: ["средняя длительность", "длительность", "время поездки", "время заказа", "сколько ехали", "в среднем ехали", "сколько в среднем ехали", "среднее время поездки"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  avg_speed_mps:
+    key: avg_speed_mps
+    label: Средняя скорость
+    description: Средняя скорость в метрах в секунду
+    sql: "ROUND(AVG(ot.distance_in_meters / NULLIF(ot.duration_in_seconds, 0))::numeric, 4)"
+    synonyms: ["скорость", "средняя скорость", "скорость поездки", "быстрота"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+  avg_accept_time_min:
+    key: avg_accept_time_min
+    label: Среднее время до принятия тендера
+    description: Среднее время между созданием тендера и принятием водителем, в минутах
+    sql: "ROUND(AVG(EXTRACT(EPOCH FROM (ot.driveraccept_timestamp - ot.tender_timestamp)) / 60.0) FILTER (WHERE ot.driveraccept_timestamp IS NOT NULL AND ot.tender_timestamp IS NOT NULL)::numeric, 2)"
+    synonyms: ["время до принятия", "скорость принятия", "время принятия тендера", "время до принятия тендера", "как быстро берут тендер", "в среднем до принятия тендера", "сколько в среднем до принятия тендера"]
+    allowed_roles: ["admin", "analyst", "business_user"]
+
+dimensions:
+  order_date:
+    key: order_date
+    label: Дата заказа
+    sql: "DATE(ot.order_timestamp)"
+    synonyms: ["по дням", "дням", "даты", "по датам"]
+    kind: time
+    grain: day
+    allowed_roles: ["admin", "analyst", "business_user"]
+  order_week:
+    key: order_week
+    label: Неделя заказа
+    sql: "DATE_TRUNC('week', ot.order_timestamp)::date"
+    synonyms: ["по неделям", "неделям", "неделя"]
+    kind: time
+    grain: week
+    allowed_roles: ["admin", "analyst", "business_user"]
+  order_month:
+    key: order_month
+    label: Месяц заказа
+    sql: "DATE_TRUNC('month', ot.order_timestamp)::date"
+    synonyms: ["по месяцам", "месяцам", "месяц"]
+    kind: time
+    grain: month
+    allowed_roles: ["admin", "analyst", "business_user"]
+  order_hour:
+    key: order_hour
+    label: Час заказа
+    sql: "EXTRACT(HOUR FROM ot.order_timestamp)::int"
+    synonyms: ["по часам", "часам", "час"]
+    kind: time
+    grain: hour
+    allowed_roles: ["admin", "analyst", "business_user"]
+  order_dow:
+    key: order_dow
+    label: День недели
+    sql: "EXTRACT(DOW FROM ot.order_timestamp)::int"
+    synonyms: ["по дням недели", "дням недели", "день недели"]
+    kind: time
+    grain: day
+    allowed_roles: ["admin", "analyst", "business_user"]
+  order_year:
+    key: order_year
+    label: Год
+    sql: "EXTRACT(YEAR FROM ot.order_timestamp)::int"
+    synonyms: ["по годам", "годам", "год"]
+    kind: time
+    grain: year
+    allowed_roles: ["admin", "analyst", "business_user"]
+  order_status:
+    key: order_status
+    label: Статус заказа
+    sql: "COALESCE(ot.status_order, 'unknown')"
+    synonyms: ["по статусам заказа", "статус заказа", "статусы заказа"]
+    kind: category
+    allowed_roles: ["admin", "analyst", "business_user"]
+  tender_status:
+    key: tender_status
+    label: Статус тендера
+    sql: "COALESCE(ot.status_tender, 'без тендера')"
+    synonyms: ["по статусам тендера", "статус тендера", "статусы тендера"]
+    kind: category
+    allowed_roles: ["admin", "analyst", "business_user"]
+  cancel_source:
+    key: cancel_source
+    label: Источник отмены
+    sql: "CASE WHEN ot.clientcancel_timestamp IS NOT NULL THEN 'клиент' WHEN ot.drivercancel_timestamp IS NOT NULL THEN 'водитель' ELSE 'не указано' END"
+    synonyms: ["по причинам отмен", "источник отмены", "кто отменил"]
+    kind: category
+    allowed_roles: ["admin", "analyst", "business_user"]
+  city_id:
+    key: city_id
+    label: Город
+    sql: "ot.city_id::text"
+    synonyms: ["город", "по городам", "городам", "ид города"]
+    kind: category
+    allowed_roles: ["admin", "analyst", "business_user"]
+  user_id:
+    key: user_id
+    label: Пользователь
+    sql: "ot.user_id"
+    synonyms: ["пользователь", "по пользователям", "пользователи", "юзер", "user"]
+    kind: category
+    allowed_roles: ["admin", "analyst", "business_user"]
+
+filters:
+  city_id:
+    key: city_id
+    label: Город
+    field: "ot.city_id::text"
+    operators: ["eq", "in"]
+    synonyms: ["город", "ид города"]
+  user_id:
+    key: user_id
+    label: Пользователь
+    field: "ot.user_id"
+    operators: ["eq", "in"]
+    synonyms: ["пользователь", "id пользователя", "user id"]
+  duration_seconds:
+    key: duration_seconds
+    label: Длительность (секунды)
+    field: "ot.duration_in_seconds"
+    operators: ["gt", "gte", "lt", "lte", "eq"]
+    synonyms: ["длительность", "время поездки", "продолжительность"]
+  order_status:
+    key: order_status
+    label: Статус заказа
+    field: "ot.status_order"
+    operators: ["eq", "in"]
+    synonyms: ["статус заказа", "статусы заказа"]
+  tender_status:
+    key: tender_status
+    label: Статус тендера
+    field: "ot.status_tender"
+    operators: ["eq", "in"]
+    synonyms: ["статус тендера", "статусы тендера"]
+  cancel_source:
+    key: cancel_source
+    label: Источник отмены
+    field: "CASE WHEN ot.clientcancel_timestamp IS NOT NULL THEN 'клиент' WHEN ot.drivercancel_timestamp IS NOT NULL THEN 'водитель' ELSE 'не указано' END"
+    operators: ["eq", "in"]
+    synonyms: ["источник отмены", "кто отменил"]
+
+joins: {}
+
+business_terms:
+  заказы:
+    entity_type: metric
+    target_key: total_orders
+  поездки:
+    entity_type: metric
+    target_key: total_orders
+  выполненные заказы:
+    entity_type: metric
+    target_key: completed_orders
+  отмены:
+    entity_type: metric
+    target_key: cancelled_orders
+  тендеры:
+    entity_type: metric
+    target_key: total_tenders
+  доля успешных тендеров:
+    entity_type: metric
+    target_key: tender_acceptance_rate
+  долю успешных тендеров:
+    entity_type: metric
+    target_key: tender_acceptance_rate
+  acceptance rate:
+    entity_type: metric
+    target_key: tender_acceptance_rate
+  конверсия:
+    entity_type: metric
+    target_key: order_completion_rate
+  средний чек:
+    entity_type: metric
+    target_key: avg_order_price
+  выручка:
+    entity_type: metric
+    target_key: total_revenue
+  выручку:
+    entity_type: metric
+    target_key: total_revenue
+  по деньгам:
+    entity_type: metric
+    target_key: total_revenue
+  денег:
+    entity_type: metric
+    target_key: total_revenue
+  касса:
+    entity_type: metric
+    target_key: total_revenue
+  скорость:
+    entity_type: metric
+    target_key: avg_speed_mps
+  средняя скорость:
+    entity_type: metric
+    target_key: avg_speed_mps
+  отменилось:
+    entity_type: metric
+    target_key: cancelled_orders
+  выполнено:
+    entity_type: metric
+    target_key: completed_orders
+
+time_mappings:
+  за вчера:
+    label: Вчера
+    kind: yesterday
+    grain: day
+  вчера:
+    label: Вчера
+    kind: yesterday
+    grain: day
+  за сегодня:
+    label: Сегодня
+    kind: today
+    grain: day
+  сегодня:
+    label: Сегодня
+    kind: today
+    grain: day
+  текущая неделя:
+    label: Текущая неделя
+    kind: current_week
+    grain: day
+  за текущую неделю:
+    label: Текущая неделя
+    kind: current_week
+    grain: day
+  на этой неделе:
+    label: Текущая неделя
+    kind: current_week
+    grain: day
+  за эту неделю:
+    label: Текущая неделя
+    kind: current_week
+    grain: day
+  с начала недели:
+    label: С начала недели
+    kind: current_week
+    grain: day
+  прошлую неделю:
+    label: Прошлая неделя
+    kind: previous_week
+    grain: day
+  за прошлую неделю:
+    label: Прошлая неделя
+    kind: previous_week
+    grain: day
+  на прошлой неделе:
+    label: Прошлая неделя
+    kind: previous_week
+    grain: day
+  текущий месяц:
+    label: Текущий месяц
+    kind: current_month
+    grain: day
+  за текущий месяц:
+    label: Текущий месяц
+    kind: current_month
+    grain: day
+  прошлый месяц:
+    label: Прошлый месяц
+    kind: previous_month
+    grain: day
+  за прошлый месяц:
+    label: Прошлый месяц
+    kind: previous_month
+    grain: day
+  прошлого месяца:
+    label: Прошлый месяц
+    kind: previous_month
+    grain: day
+  в этом месяце:
+    label: Текущий месяц
+    kind: current_month
+    grain: day
+  в прошлом месяце:
+    label: Прошлый месяц
+    kind: previous_month
+    grain: day
+  с начала месяца:
+    label: С начала месяца
+    kind: current_month
+    grain: day
+  текущий год:
+    label: Текущий год
+    kind: current_year
+    grain: month
+  за текущий год:
+    label: Текущий год
+    kind: current_year
+    grain: month
+  в этом году:
+    label: Текущий год
+    kind: current_year
+    grain: month
+  с начала года:
+    label: С начала года
+    kind: current_year
+    grain: month
+  этот год:
+    label: Текущий год
+    kind: current_year
+    grain: month
+  за этот год:
+    label: Текущий год
+    kind: current_year
+    grain: month
+  прошлый год:
+    label: Прошлый год
+    kind: previous_year
+    grain: month
+  за прошлый год:
+    label: Прошлый год
+    kind: previous_year
+    grain: month
+  последний квартал:
+    label: Последний квартал (3 месяца)
+    kind: rolling_quarter
+    grain: day

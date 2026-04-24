@@ -1,0 +1,16 @@
+.next
+node_modules
+__pycache__
+.pytest_cache
+.venv
+.env
+*.pyc
+dist
+coverage
+*.tsbuildinfo
+apps/api/.mypy_cache
+apps/api/.ruff_cache
+postgres-data
+data/*.csv
+!data/train.csv
+
