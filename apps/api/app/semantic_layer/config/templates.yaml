@@ -55,3 +55,59 @@ templates:
     output_shape:
       chart: kpi
       requires_time: true
+  - name: Выручка по городам
+    description: Сравнение выручки по городам за выбранный период
+    example_question: Покажи выручку по городам за прошлую неделю
+    pattern: "<метрика> по городам за <период>"
+    guidance: "Используй metric total_revenue и dimension city_id."
+    output_shape:
+      chart: bar
+      requires_time: true
+  - name: Конверсия в выполненный заказ по дням
+    description: Дневная динамика конверсии в выполненный заказ
+    example_question: Покажи конверсию в выполненный заказ по дням за текущую неделю
+    pattern: "<метрика конверсии> по дням за <период>"
+    guidance: "Используй metric order_completion_rate и dimension order_date."
+    output_shape:
+      chart: line
+      requires_time: true
+  - name: Среднее время до принятия тендера
+    description: Динамика среднего времени до принятия тендера
+    example_question: Покажи среднее время до принятия тендера по дням за прошлую неделю
+    pattern: "<метрика> по дням за <период>"
+    guidance: "Используй metric avg_accept_time_min и dimension order_date."
+    output_shape:
+      chart: line
+      requires_time: true
+  - name: Выручка в выходные
+    description: Выручка только по выходным дням выбранного периода
+    example_question: Покажи выручку в выходные за прошлую неделю
+    pattern: "<метрика> в выходные за <период>"
+    guidance: "Используй metric total_revenue, filter order_dow in [0,6] и при многодневном периоде сохраняй dimension order_date."
+    output_shape:
+      chart: line
+      requires_time: true
+  - name: Средняя скорость по дням
+    description: Динамика средней скорости поездок
+    example_question: Покажи среднюю скорость по дням за прошлую неделю
+    pattern: "<метрика> по дням за <период>"
+    guidance: "Используй metric avg_speed_mps и dimension order_date."
+    output_shape:
+      chart: line
+      requires_time: true
+  - name: Сравнение выручки с прошлым периодом
+    description: Сравнение выручки между текущим и предыдущим периодом
+    example_question: Сравни выручку за текущую неделю и прошлую
+    pattern: "Сравни <метрику> за <период> и прошлый период"
+    guidance: "Используй metric total_revenue и comparison previous_period; не добавляй лишнюю разбивку, если её не просили."
+    output_shape:
+      chart: bar
+      requires_time: true
+  - name: Отмены по источнику
+    description: Показывает, кто инициировал отмены в выбранном периоде
+    example_question: Покажи отмены по источникам за текущий месяц
+    pattern: "<метрика> по источникам за <период>"
+    guidance: "Используй metric cancelled_orders и dimension cancel_source."
+    output_shape:
+      chart: bar
+      requires_time: true

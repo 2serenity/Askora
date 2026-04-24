@@ -183,9 +183,9 @@ class SQLReviewService:
     def _requested_metric_kind(self, question: str) -> str | None:
         if "средн" in question or "в среднем" in question:
             return "avg"
-        if "сумм" in question or "выручк" in question:
+        if any(token in question for token in ["сумм", "выручк", "доход", "оборот", "денег", "деньгам", "касс"]):
             return "sum"
-        if "сколько" in question:
+        if "сколько" in question and "сколько процентов" not in question:
             return "count"
         return None
 

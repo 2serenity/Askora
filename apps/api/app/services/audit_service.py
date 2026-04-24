@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app.core.privacy import redact_payload
@@ -33,9 +34,9 @@ class AuditService:
             sql_text=sql_text,
             blocked_reason=blocked_reason,
             row_count=row_count,
-            interpretation_json=redact_payload(interpretation_json or {}),
-            validation_json=redact_payload(validation_json or {}),
-            extra_json=redact_payload(extra_json or {}),
+            interpretation_json=redact_payload(jsonable_encoder(interpretation_json or {})),
+            validation_json=redact_payload(jsonable_encoder(validation_json or {})),
+            extra_json=redact_payload(jsonable_encoder(extra_json or {})),
         )
         return self.repository.create(entry)
 

@@ -1,3 +1,4 @@
+from app.ai.percent_change import is_percent_change_request
 from app.schemas.query import QueryPlan, VisualizationSpec
 
 
@@ -6,8 +7,7 @@ class VisualizationPlanner:
         metric_keys = [metric.key for metric in plan.metrics]
         time_dimensions = {"order_date", "order_week", "order_month"}
         preferred = plan.preferred_chart_type
-        normalized_question = plan.question.lower().replace("ё", "е")
-        is_percent_change = any(token in normalized_question for token in ["процент", "рост", "паден", "изменен"])
+        is_percent_change = is_percent_change_request(plan.question)
 
         if preferred == "table":
             return VisualizationSpec(

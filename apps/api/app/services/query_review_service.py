@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.ai.percent_change import is_percent_change_request
 from app.schemas.query import ComparisonSpec, QueryIntent, QueryPlan
 
 
@@ -40,8 +41,6 @@ class QueryReviewService:
     }
 
     _COMPARISON_HINTS = ("сравни", "сравнение", "по сравнению", "в сравнении", "относительно")
-    _PERCENT_HINTS = ("процент", "процентов", "в процентах", "рост", "паден", "изменен", "поднял", "опуст")
-
     def __init__(self, db: Session):
         self.db = db
 
@@ -157,7 +156,7 @@ class QueryReviewService:
         return max(0.1, min(round(score, 2), 0.98))
 
     def _wants_percent_change(self, question: str) -> bool:
-        return any(token in question for token in self._PERCENT_HINTS)
+        return is_percent_change_request(question)
 
     def _normalize_text(self, value: str) -> str:
         return value.lower().replace("ё", "е")

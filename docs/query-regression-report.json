@@ -1,21 +1,17 @@
 {
-  "total": 63,
-  "passed": 61,
-  "failed": 2,
-  "pass_rate": 96.83,
-  "avg_latency_ms": 100.69,
-  "false_block_rate": 3.57,
+  "total": 70,
+  "passed": 70,
+  "failed": 0,
+  "pass_rate": 100.0,
+  "avg_latency_ms": 102.59,
+  "false_block_rate": 0.0,
   "expected_status_distribution": {
-    "executed": 56,
-    "needs_clarification": 7
+    "executed": 62,
+    "needs_clarification": 8
   },
   "actual_status_distribution": {
-    "executed": 54,
-    "needs_clarification": 8,
-    "blocked": 1
+    "executed": 62,
+    "needs_clarification": 8
   },
-  "failures": [
-    "[58] Статус: ожидался executed, получен blocked — Покажи среднюю скорость по дням за прошлую неделю",
-    "[62] Статус: ожидался executed, получен needs_clarification — Сравни выручку за 16 апреля и 19 апреля"
-  ]
+  "failures": []
 }
