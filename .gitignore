@@ -12,5 +12,4 @@ apps/api/.mypy_cache
 apps/api/.ruff_cache
 postgres-data
 data/*.csv
-!data/train.csv
 

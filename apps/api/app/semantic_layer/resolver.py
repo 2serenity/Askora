@@ -6,6 +6,7 @@ from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.ai.percent_change import is_percent_change_request
 from app.models.semantic import SemanticDictionaryEntry
 from app.schemas.query import (
     ComparisonSpec,
@@ -342,7 +343,8 @@ class SemanticResolver:
             return today, today
         if kind == "current_week":
             start = today - timedelta(days=today.weekday())
-            return start, today
+            end = start + timedelta(days=6)
+            return start, end
         if kind == "previous_week":
             end = today - timedelta(days=today.weekday() + 1)
             start = end - timedelta(days=6)
@@ -390,9 +392,9 @@ class SemanticResolver:
         normalized = question.lower().replace("ё", "е")
         if "средн" in normalized or "в среднем" in normalized:
             return "avg"
-        if "сумм" in normalized or "выручк" in normalized:
+        if any(token in normalized for token in ["сумм", "выручк", "доход", "оборот", "денег", "деньгам", "касс"]):
             return "sum"
-        if "сколько" in normalized:
+        if "сколько" in normalized and "сколько процентов" not in normalized:
             return "count"
         return None
 
@@ -430,11 +432,7 @@ class SemanticResolver:
         return dict(synonyms)
 
     def _is_percent_change_request(self, question: str) -> bool:
-        normalized = question.lower().replace("ё", "е")
-        return any(
-            token in normalized
-            for token in ["процент", "процентов", "в процентах", "рост", "паден", "изменен", "поднял", "опуст"]
-        )
+        return is_percent_change_request(question)
 
     def _adapt_metrics_for_percent_change(self, metrics: list[ResolvedMetric]) -> list[ResolvedMetric]:
         if not metrics:

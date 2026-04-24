@@ -5,6 +5,8 @@
 :root {
   --background: 120 8% 4%;
   --foreground: 120 18% 92%;
+  --font-manrope: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
   --card: 120 7% 6%;
   --card-foreground: 120 18% 92%;
   --primary: 122 100% 58%;

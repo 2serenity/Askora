@@ -41,7 +41,8 @@ def _range_equals(start_expected: date, end_expected: date):
 def _current_week(start: date, end: date, time_context: SemanticTimeContext) -> bool:
     anchor = time_context.get_anchor_date()
     expected_start = anchor - timedelta(days=anchor.weekday())
-    return start == expected_start and end == anchor
+    expected_end = expected_start + timedelta(days=6)
+    return start == expected_start and end == expected_end
 
 
 def _previous_week(start: date, end: date, time_context: SemanticTimeContext) -> bool:
@@ -118,9 +119,34 @@ def build_cases() -> list[RegressionCase]:
         RegressionCase("Сколько в среднем до принятия тендера в этом месяце", expected_metrics=("avg_accept_time_min",), time_assertion=_current_month),
         RegressionCase("Сколько было принятых тендеров в этом месяце", expected_metrics=("successful_tenders",), time_assertion=_current_month),
         RegressionCase("Какой процент выполненных заказов в этом месяце", expected_metrics=("order_completion_rate",), time_assertion=_current_month),
+        RegressionCase(
+            "На сколько процентов выросла выручка в марте относительно февраля",
+            expected_status="executed",
+            expected_metrics=("total_revenue",),
+            time_assertion=_is_month(3, 2026),
+        ),
+        RegressionCase(
+            "На сколько процентов поднялся или опустился доход в марте относительно февраля",
+            expected_status="executed",
+            expected_metrics=("total_revenue",),
+            time_assertion=_is_month(3, 2026),
+        ),
         RegressionCase("Сравни выполненные заказы за текущую неделю и прошлую", expected_metrics=("completed_orders",), time_assertion=_current_week),
         RegressionCase("Покажи, пожалуйста, деньги с 15 марта по 27 марта по дням", expected_metrics=("total_revenue",), expected_dimensions=("order_date",), time_assertion=_range_equals(date(2026, 3, 15), date(2026, 3, 27))),
-        RegressionCase("Выручка за 16 марта и 19 марта по часам", expected_status="needs_clarification"),
+        RegressionCase(
+            "Выручка за 16 марта и 19 марта по часам",
+            expected_status="executed",
+            expected_metrics=("total_revenue",),
+            expected_dimensions=("order_hour", "order_date"),
+            time_assertion=_range_equals(date(2026, 3, 16), date(2026, 3, 19)),
+        ),
+        RegressionCase(
+            "Подскажи обоот за 16 марта и 19 марта по часам",
+            expected_status="executed",
+            expected_metrics=("total_revenue",),
+            expected_dimensions=("order_hour", "order_date"),
+            time_assertion=_range_equals(date(2026, 3, 16), date(2026, 3, 19)),
+        ),
         RegressionCase("Мне нужна прибыль за апрель", expected_status="needs_clarification"),
         RegressionCase("Сравни конверсию в заказ по каналам за текущую неделю и прошлую", expected_status="needs_clarification"),
         RegressionCase("Покажи продажи айфонов", expected_status="needs_clarification"),
@@ -134,8 +160,24 @@ def build_cases() -> list[RegressionCase]:
         RegressionCase("Покажи заказы по пользователям за вчера", expected_metrics=("total_orders",), expected_dimensions=("user_id",)),
         RegressionCase("Покажи среднюю скорость по дням за прошлую неделю", expected_metrics=("avg_speed_mps",), expected_dimensions=("order_date",), time_assertion=_previous_week),
         RegressionCase("Покажи среднюю длительность больше 10 минут за прошлую неделю", expected_metrics=("avg_duration_min",), time_assertion=_previous_week),
+        RegressionCase(
+            "Покажи выручку в выходные за прошлую неделю",
+            expected_status="executed",
+            expected_metrics=("total_revenue",),
+            expected_dimensions=("order_date",),
+            time_assertion=_previous_week,
+        ),
+        RegressionCase(
+            "Покажи выручку в будни за прошлую неделю",
+            expected_status="executed",
+            expected_metrics=("total_revenue",),
+            expected_dimensions=("order_date",),
+            time_assertion=_previous_week,
+        ),
         RegressionCase("Покажи заказы по каналам за прошлую неделю", expected_status="needs_clarification"),
         RegressionCase("Обнови статусы заказов за вчера", expected_status="needs_clarification"),
+        RegressionCase("Почему продажи упали в выходные? Покажи график", expected_status="needs_clarification"),
+        RegressionCase("Падение", expected_status="needs_clarification"),
         RegressionCase("Сравни выручку за 16 апреля и 19 апреля", expected_status="executed", expected_metrics=("total_revenue",)),
         RegressionCase("Покажи количество заказов за текущую неделю и прошлую", expected_status="executed", expected_metrics=("total_orders",), time_assertion=_current_week),
     ]

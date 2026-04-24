@@ -5,6 +5,8 @@ import json
 import re
 from pathlib import Path
 
+from app.ai.percent_change import is_percent_change_request
+
 def _normalize(value: str) -> str:
     return " ".join(value.lower().replace("ё", "е").split())
 
@@ -67,7 +69,7 @@ def _infer_payload(question: str, status: str, metrics: list[str], dimensions: l
             break
 
     comparison_enabled = any(token in normalized for token in ["сравни", "сравнение", "по сравнению", "относительно"])
-    if "процент" in normalized or "рост" in normalized or "паден" in normalized:
+    if is_percent_change_request(normalized):
         comparison_enabled = True
 
     intent_type = "aggregation"

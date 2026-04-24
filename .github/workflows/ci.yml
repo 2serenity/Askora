@@ -43,6 +43,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: apps/api/requirements.txt
 
       - name: Install API dependencies
         run: pip install -r requirements.txt
@@ -61,7 +63,11 @@ jobs:
         working-directory: apps/api
 
       - name: Run NL2SQL regression gate
-        run: python -m app.scripts.query_regression --min-pass-rate 90 --max-false-block-rate 8 --max-avg-latency-ms 1200 --json-out ../../docs/query-regression-report-ci.json
+        run: python -m app.scripts.query_regression --strict-cases --min-pass-rate 90 --max-false-block-rate 8 --max-avg-latency-ms 1200 --json-out ../../docs/query-regression-report-ci.json
+        working-directory: apps/api
+
+      - name: Run NL intent stress gate
+        run: python -m app.scripts.local_intent_stress
         working-directory: apps/api
 
       - name: Setup Node

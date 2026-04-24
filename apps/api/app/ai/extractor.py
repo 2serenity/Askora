@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.ai.percent_change import is_percent_change_request
 from app.ai.local_intent_model import local_intent_model
 from app.models.semantic import SemanticDictionaryEntry
 from app.schemas.query import ComparisonSpec, QueryIntent, TimeRange
@@ -122,8 +123,6 @@ EXPLICIT_DIMENSION_PHRASES = {
     "по каждому пользователю": "user_id",
 }
 
-PCT_CHANGE_PATTERNS = ["изменени", "рост", "паден", "в процентах", "процент", "относительно прошлого", "к прошлому"]
-
 VAGUE_TERM_PATTERNS = ["дорог", "быстр", "плох", "хорош", "дешев"]
 
 MONTH_PATTERN = "|".join(sorted({re.escape(month) for month in MONTHS}, key=len, reverse=True))
@@ -204,7 +203,15 @@ class HybridIntentExtractor:
                 preferred_chart_type = "bar"
 
         intent_type = self._detect_intent_type(question, comparison.enabled, dimension_hits)
-        ambiguity_reasons = self._detect_ambiguity(question)
+        ambiguity_reasons = self._detect_ambiguity(
+            question,
+            metric_hits=metric_hits,
+            filters=filters,
+            time_expression=time_expression,
+            time_range_override=time_range_override,
+            discrete_dates=discrete_dates,
+            comparison=comparison,
+        )
 
         notes: list[str] = [*time_notes, *metric_notes, *filter_notes, *chart_notes, *explicit_comparison_notes]
         if comparison.enabled:
@@ -312,10 +319,14 @@ class HybridIntentExtractor:
             return rule_based
 
         local_based = local_based or {}
+        preserve_rule_disambiguation = self._should_preserve_rule_disambiguation(rule_based)
         merged_lists = defaultdict(list)
         for key in ["filters", "ambiguity_reasons", "clarification_questions", "notes"]:
             merged_lists[key] = list(rule_based.get(key, []))
-            for item in local_based.get(key, []):
+            local_items = local_based.get(key, [])
+            if preserve_rule_disambiguation and key in {"ambiguity_reasons", "clarification_questions"}:
+                local_items = []
+            for item in local_items:
                 if item not in merged_lists[key]:
                     merged_lists[key].append(item)
 
@@ -364,11 +375,20 @@ class HybridIntentExtractor:
                 return source
         return []
 
+    def _should_preserve_rule_disambiguation(self, rule_based: dict[str, Any]) -> bool:
+        if rule_based.get("ambiguity_reasons"):
+            return False
+        multi_date = rule_based.get("multi_date") or {}
+        explicit_dates = multi_date.get("dates") or []
+        has_explicit_structure = bool(rule_based.get("time_range_override")) or len(explicit_dates) >= 2
+        return has_explicit_structure and bool(rule_based.get("metrics"))
+
     def _match_metric_keys(self, question: str) -> list[str]:
         matches: list[str] = list(self._match_compound_metrics(question))
         occupied_spans: list[tuple[int, int]] = []
 
-        for alias, key in sorted(self._collect_metric_aliases(), key=lambda item: len(item[0]), reverse=True):
+        metric_aliases = sorted(self._collect_metric_aliases(), key=lambda item: len(item[0]), reverse=True)
+        for alias, key in metric_aliases:
             for match in re.finditer(re.escape(alias), question):
                 span = match.span()
                 if any(not (span[1] <= taken[0] or span[0] >= taken[1]) for taken in occupied_spans):
@@ -377,11 +397,78 @@ class HybridIntentExtractor:
                 matches.append(key)
                 break
 
+        if not matches:
+            matches.extend(self._match_metric_typos(question, metric_aliases))
+
         unique_matches: list[str] = []
         for key in matches:
             if key not in unique_matches:
                 unique_matches.append(key)
         return unique_matches
+
+    def _match_metric_typos(self, question: str, aliases: list[tuple[str, str]]) -> list[str]:
+        matches: list[str] = []
+        seen_keys: set[str] = set()
+        for token_match in re.finditer(r"\b[0-9a-zа-яё_-]{4,}\b", question):
+            token = token_match.group(0)
+            best_key: str | None = None
+            best_distance: int | None = None
+            best_alias_length = -1
+            for alias, key in aliases:
+                if " " in alias or len(alias) < 5 or alias == token:
+                    continue
+                if abs(len(alias) - len(token)) > 1:
+                    continue
+                if alias[0] != token[0] or alias[-1] != token[-1]:
+                    continue
+                if not self._is_safe_single_typo(token, alias):
+                    continue
+                distance = self._levenshtein_distance(token, alias)
+                if distance > 1:
+                    continue
+                if (
+                    best_distance is None
+                    or distance < best_distance
+                    or (distance == best_distance and len(alias) > best_alias_length)
+                ):
+                    best_key = key
+                    best_distance = distance
+                    best_alias_length = len(alias)
+            if best_key and best_key not in seen_keys:
+                matches.append(best_key)
+                seen_keys.add(best_key)
+        return matches
+
+    def _is_safe_single_typo(self, token: str, alias: str) -> bool:
+        if token == alias:
+            return False
+        if self._levenshtein_distance(token, alias) <= 1:
+            return True
+        if len(token) != len(alias):
+            return False
+        mismatches = [index for index, (left, right) in enumerate(zip(token, alias)) if left != right]
+        if len(mismatches) != 2:
+            return False
+        first, second = mismatches
+        return second == first + 1 and token[first] == alias[second] and token[second] == alias[first]
+
+    def _levenshtein_distance(self, source: str, target: str) -> int:
+        if source == target:
+            return 0
+        if not source:
+            return len(target)
+        if not target:
+            return len(source)
+        previous = list(range(len(target) + 1))
+        for index, source_char in enumerate(source, start=1):
+            current = [index]
+            for target_index, target_char in enumerate(target, start=1):
+                insertion = current[target_index - 1] + 1
+                deletion = previous[target_index] + 1
+                substitution = previous[target_index - 1] + (source_char != target_char)
+                current.append(min(insertion, deletion, substitution))
+            previous = current
+        return previous[-1]
 
     def _match_compound_metrics(self, question: str) -> list[str]:
         matches: list[str] = []
@@ -482,6 +569,10 @@ class HybridIntentExtractor:
         user_match = re.search(r"(?:пользователь|user(?:_?id)?)\s*([a-zA-Z0-9_-]+)", question)
         if user_match:
             filters.append({"key": "user_id", "operator": "eq", "value": user_match.group(1)})
+        if any(token in question for token in ["выходн", "по выходным", "на выходных"]):
+            filters.append({"key": "order_dow", "operator": "in", "value": [0, 6]})
+        elif any(token in question for token in ["будн", "по будням", "в будни"]):
+            filters.append({"key": "order_dow", "operator": "in", "value": [1, 2, 3, 4, 5]})
 
         duration_gt_match = re.search(r"длител\w+\s+(?:больш[е]|выше)\s+(\d+)\s*мин", question)
         if duration_gt_match:
@@ -690,7 +781,7 @@ class HybridIntentExtractor:
         return None, notes
 
     def _requests_percent_change(self, question: str) -> bool:
-        return any(token in question for token in PCT_CHANGE_PATTERNS)
+        return is_percent_change_request(question)
 
     def _detect_comparison(self, question: str) -> ComparisonSpec:
         if "этот год" in question and "прошлый год" in question:
@@ -699,7 +790,7 @@ class HybridIntentExtractor:
             return ComparisonSpec(enabled=True, mode="previous_period", baseline_label="Предыдущий период")
         if re.search(r"\b(текущ\w+|эт\w+)\b.*\bи\s+(прошл\w+|предыдущ\w+)\b", question):
             return ComparisonSpec(enabled=True, mode="previous_period", baseline_label="Предыдущий период")
-        if any(token in question for token in PCT_CHANGE_PATTERNS):
+        if is_percent_change_request(question):
             return ComparisonSpec(enabled=True, mode="previous_period", baseline_label="Предыдущий период")
         return ComparisonSpec()
 
@@ -712,7 +803,17 @@ class HybridIntentExtractor:
             return "aggregation"
         return "aggregation"
 
-    def _detect_ambiguity(self, question: str) -> list[str]:
+    def _detect_ambiguity(
+        self,
+        question: str,
+        *,
+        metric_hits: list[str],
+        filters: list[dict[str, Any]],
+        time_expression: str | None,
+        time_range_override: TimeRange | None,
+        discrete_dates: list[date],
+        comparison: ComparisonSpec,
+    ) -> list[str]:
         reasons: list[str] = []
 
         if any(pattern in question for pattern in DESTRUCTIVE_PATTERNS):
@@ -732,6 +833,17 @@ class HybridIntentExtractor:
         multiple_dates_reason = self._detect_multiple_discrete_dates(question)
         if multiple_dates_reason and multiple_dates_reason not in reasons:
             reasons.append(multiple_dates_reason)
+
+        normalized = self._normalize_text(question)
+        has_time_context = bool(time_expression or time_range_override or discrete_dates)
+        has_metric_context = bool(metric_hits)
+        change_tokens = ("падени", "упал", "упали", "упало", "просел", "просела", "просели", "снижен", "снизил")
+        asks_for_reason = "почему" in normalized
+        describes_change = any(token in normalized for token in change_tokens) or is_percent_change_request(normalized)
+        if describes_change and not has_metric_context and not has_time_context and not filters:
+            reasons.append("Уточните, что именно упало или изменилось и за какой период нужно это анализировать.")
+        elif asks_for_reason and describes_change and not has_time_context and not comparison.enabled:
+            reasons.append("Чтобы объяснить падение, укажите период или базу сравнения. Например: «почему продажи упали в выходные за прошлый месяц» или «сравни выходные этой недели и прошлой».")
 
         return reasons
 

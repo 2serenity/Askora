@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from datetime import timedelta
 
+from app.ai.percent_change import is_percent_change_request
 from app.schemas.query import QueryPlan
 from app.semantic_layer.loader import semantic_loader
 from app.semantic_layer.types import SemanticDataset
@@ -53,8 +54,7 @@ class SQLBuilder:
         return " ".join(query.split()), params
 
     def _needs_percent_change(self, question: str) -> bool:
-        normalized = question.lower().replace("ё", "е")
-        return any(token in normalized for token in ["изменени", "рост", "паден", "в процентах", "процент", "относительно прошлого", "к прошлому"])
+        return is_percent_change_request(question)
 
     def _build_period_percent_change(self, plan: QueryPlan, dataset: SemanticDataset, join_keys: set[str]) -> tuple[str, dict]:
         if not plan.metrics:

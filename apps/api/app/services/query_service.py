@@ -5,6 +5,7 @@ from datetime import date
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
+from app.ai.percent_change import is_percent_change_request
 from app.ai.extractor import HybridIntentExtractor
 from app.core.config import settings
 from app.core.privacy import redact_payload
@@ -493,13 +494,12 @@ class QueryService:
         return self.repo.create_query_history(history)
 
     def _build_comparison_summary(self, rows: list[dict], query_plan) -> dict | None:
-        normalized_question = query_plan.question.lower().replace("ё", "е")
         if (
             not query_plan.comparison.enabled
             or not rows
             or not query_plan.metrics
             or "period_label" not in rows[0]
-            or any(token in normalized_question for token in ["процент", "рост", "паден", "изменен"])
+            or is_percent_change_request(query_plan.question)
         ):
             return None
 

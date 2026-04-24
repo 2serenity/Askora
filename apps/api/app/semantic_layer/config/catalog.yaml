@@ -227,6 +227,12 @@ filters:
     field: "ot.duration_in_seconds"
     operators: ["gt", "gte", "lt", "lte", "eq"]
     synonyms: ["длительность", "время поездки", "продолжительность"]
+  order_dow:
+    key: order_dow
+    label: День недели
+    field: "EXTRACT(DOW FROM ot.order_timestamp)::int"
+    operators: ["eq", "in"]
+    synonyms: ["день недели", "дни недели", "выходные", "будни"]
   order_status:
     key: order_status
     label: Статус заказа
